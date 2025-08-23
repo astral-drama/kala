@@ -1,0 +1,26 @@
+# Build artifacts
+*.deb
+*.buildinfo
+*.changes
+*.build
+*.dsc
+*.tar.gz
+*.tar.xz
+
+# Debian build directories
+debian/kala-timeserver/
+debian/.debhelper/
+debian/files
+debian/*.log
+debian/*.substvars
+debian/debhelper-build-stamp
+
+# Editor files
+*.swp
+*~
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db

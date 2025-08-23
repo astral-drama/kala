@@ -1,0 +1,39 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    configure)
+        # Backup original chrony.conf if it exists and hasn't been backed up
+        if [ -f /etc/chrony/chrony.conf ] && [ ! -f /etc/chrony/chrony.conf.pre-kala ]; then
+            cp /etc/chrony/chrony.conf /etc/chrony/chrony.conf.pre-kala
+        fi
+        
+        # Install our chrony configuration
+        cp /usr/share/kala-timeserver/chrony.conf /etc/chrony/chrony.conf
+        
+        # Ensure chrony service is enabled and started
+        systemctl enable chrony.service
+        systemctl restart chrony.service
+        
+        # Open firewall port for NTP if ufw is active
+        if command -v ufw >/dev/null 2>&1 && ufw status | grep -q "Status: active"; then
+            ufw allow 123/udp comment 'NTP server (kala-timeserver)' || true
+        fi
+        
+        echo "Kala time server has been configured successfully."
+        echo "Chrony is now serving time to local network clients."
+        echo "Check status with: chronyc sources"
+        ;;
+    
+    abort-upgrade|abort-remove|abort-deconfigure)
+        ;;
+    
+    *)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

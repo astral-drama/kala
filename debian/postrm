@@ -1,0 +1,29 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    purge|remove)
+        # Restore original chrony.conf if we backed it up
+        if [ -f /etc/chrony/chrony.conf.pre-kala ]; then
+            mv /etc/chrony/chrony.conf.pre-kala /etc/chrony/chrony.conf
+            systemctl restart chrony.service || true
+        fi
+        
+        # Remove firewall rule if ufw is active
+        if command -v ufw >/dev/null 2>&1 && ufw status | grep -q "Status: active"; then
+            ufw delete allow 123/udp || true
+        fi
+        ;;
+    
+    upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+        ;;
+    
+    *)
+        echo "postrm called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

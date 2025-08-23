@@ -1,0 +1,6 @@
+kala-timeserver (0.1.0-1) unstable; urgency=low
+
+  * Initial release
+  * Basic chrony time server configuration
+
+ -- Seth <seth@raspberrypi>  Fri, 23 Aug 2025 12:00:00 +0000
