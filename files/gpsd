@@ -1,0 +1,21 @@
+# Configuration for gpsd to work with Raspberry Pi Ultimate GPS HAT
+# This file is sourced by /etc/init.d/gpsd and systemd
+
+# Start the gpsd daemon automatically at boot time
+START_DAEMON="true"
+
+# Use USB hotplugging to add new USB devices automatically
+USBAUTO="false"
+
+# Devices gpsd should connect to at boot time
+# /dev/ttyAMA0 is the primary UART on Raspberry Pi (GPIO pins)
+# /dev/pps0 is the PPS device (if kernel PPS is enabled)
+DEVICES="/dev/ttyAMA0 /dev/pps0"
+
+# Options to gpsd
+# -n = Don't wait for a client to connect before polling GPS
+# -b = Broken-device-safety mode (read-only)
+GPSD_OPTIONS="-n -b"
+
+# Socket for gpsd
+GPSD_SOCKET="/var/run/gpsd.sock"

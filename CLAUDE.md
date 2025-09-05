@@ -20,8 +20,14 @@ Build a Debian package that configures a Raspberry Pi as an NTP time server usin
 - Set appropriate stratum level
 - Enable RTC synchronization if available
 
-## Build Commands
+## Build and Install Commands
 ```bash
-dpkg-buildpackage -us -uc -b  # Build binary package
-dpkg -i kala-timeserver_*.deb  # Install package
+# Build binary package
+dpkg-buildpackage -us -uc -b
+
+# Install package with automatic dependency resolution
+sudo apt install ./kala-timeserver_*.deb
+
+# Alternative if dependencies are already met
+sudo dpkg -i kala-timeserver_*.deb
 ```

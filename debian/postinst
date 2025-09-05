@@ -8,10 +8,80 @@ case "$1" in
             cp /etc/chrony/chrony.conf /etc/chrony/chrony.conf.pre-kala
         fi
         
-        # Install our chrony configuration
-        cp /usr/share/kala-timeserver/chrony.conf /etc/chrony/chrony.conf
+        # Backup original gpsd config if it exists and hasn't been backed up
+        if [ -f /etc/default/gpsd ] && [ ! -f /etc/default/gpsd.pre-kala ]; then
+            cp /etc/default/gpsd /etc/default/gpsd.pre-kala
+        fi
         
-        # Ensure chrony service is enabled and started
+        # Check if GPS hardware is likely present (UART enabled)
+        GPS_AVAILABLE=0
+        if [ -e /dev/serial0 ] || [ -e /dev/ttyAMA0 ]; then
+            GPS_AVAILABLE=1
+            echo "GPS hardware interface detected."
+        fi
+        
+        # Install appropriate chrony configuration
+        if [ $GPS_AVAILABLE -eq 1 ] && [ -f /usr/share/kala-timeserver/chrony-gps.conf ]; then
+            echo "Installing chrony configuration with GPS/PPS support..."
+            cp /usr/share/kala-timeserver/chrony-gps.conf /etc/chrony/chrony.conf
+            
+            # Install gpsd configuration
+            cp /usr/share/kala-timeserver/gpsd /etc/default/gpsd
+            
+            # Configure serial port for GPS on Raspberry Pi
+            if command -v raspi-config >/dev/null 2>&1; then
+                echo "Configuring serial port for GPS..."
+                # Disable serial console but enable UART hardware
+                raspi-config nonint do_serial_cons 1 || true
+                raspi-config nonint do_serial_hw 0 || true
+                echo "Serial console disabled, UART hardware enabled for GPS."
+                REBOOT_REQUIRED=1
+            elif [ -f /boot/config.txt ] && ! grep -q "^enable_uart=1" /boot/config.txt; then
+                # Fallback method if raspi-config not available
+                echo "Enabling UART for GPS communication..."
+                echo "enable_uart=1" >> /boot/config.txt
+                # Also try to disable console on cmdline.txt
+                if [ -f /boot/cmdline.txt ]; then
+                    sed -i 's/console=serial0,[0-9]* //g' /boot/cmdline.txt
+                    sed -i 's/console=ttyAMA0,[0-9]* //g' /boot/cmdline.txt
+                fi
+                REBOOT_REQUIRED=1
+            fi
+            
+            # Configure PPS support for GPS (Raspberry Pi Ultimate GPS HAT uses GPIO4)
+            CONFIG_FILE="/boot/firmware/config.txt"
+            if [ -f "$CONFIG_FILE" ]; then
+                if ! grep -q "^dtoverlay=pps-gpio,gpiopin=4" "$CONFIG_FILE"; then
+                    echo "Enabling PPS support for GPS..."
+                    echo "dtoverlay=pps-gpio,gpiopin=4" >> "$CONFIG_FILE"
+                    REBOOT_REQUIRED=1
+                fi
+            elif [ -f "/boot/config.txt" ]; then
+                # Fallback for older Pi OS versions
+                if ! grep -q "^dtoverlay=pps-gpio,gpiopin=4" "/boot/config.txt"; then
+                    echo "Enabling PPS support for GPS..."
+                    echo "dtoverlay=pps-gpio,gpiopin=4" >> "/boot/config.txt"
+                    REBOOT_REQUIRED=1
+                fi
+            fi
+            
+            # Configure serial port for GPS (9600 baud for Ultimate GPS HAT)
+            if command -v stty >/dev/null 2>&1 && [ -e /dev/ttyAMA0 ]; then
+                stty -F /dev/ttyAMA0 9600 raw -echo -echoe -echok -echoctl -echoke || true
+            fi
+            
+            # Enable and restart gpsd
+            systemctl enable gpsd.service || true
+            systemctl restart gpsd.service || true
+            
+            # Give gpsd time to start before restarting chrony
+            sleep 2
+        else
+            echo "Installing standard chrony configuration..."
+            cp /usr/share/kala-timeserver/chrony.conf /etc/chrony/chrony.conf
+        fi
+        
+        # Ensure chrony service is enabled and restarted
         systemctl enable chrony.service
         systemctl restart chrony.service
         
@@ -20,9 +90,30 @@ case "$1" in
             ufw allow 123/udp comment 'NTP server (kala-timeserver)' || true
         fi
         
+        echo "========================================="
         echo "Kala time server has been configured successfully."
-        echo "Chrony is now serving time to local network clients."
-        echo "Check status with: chronyc sources"
+        
+        if [ $GPS_AVAILABLE -eq 1 ]; then
+            echo "GPS/PPS support is enabled."
+            echo ""
+            echo "GPS Status Commands:"
+            echo "  Check GPS data:     gpsmon"
+            echo "  View GPS info:      cgps -s"
+            echo "  Test PPS signal:    ppstest /dev/pps0"
+            echo ""
+        fi
+        
+        echo "Chrony Status Commands:"
+        echo "  View time sources:  chronyc sources"
+        echo "  Check GPS/PPS:      chronyc sourcestats"
+        echo "  Server statistics:  chronyc serverstats"
+        
+        if [ "${REBOOT_REQUIRED:-0}" -eq 1 ]; then
+            echo ""
+            echo "IMPORTANT: A reboot is required for serial port changes to take effect."
+            echo "Please run: sudo reboot"
+        fi
+        echo "========================================="
         ;;
     
     abort-upgrade|abort-remove|abort-deconfigure)

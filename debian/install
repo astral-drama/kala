@@ -1,1 +1,3 @@
 files/chrony.conf usr/share/kala-timeserver/
+files/chrony-gps.conf usr/share/kala-timeserver/
+files/gpsd usr/share/kala-timeserver/

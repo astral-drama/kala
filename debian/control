@@ -8,8 +8,11 @@ Homepage: https://github.com/seth/kala-timeserver
 
 Package: kala-timeserver
 Architecture: all
-Depends: ${misc:Depends}, chrony
-Description: NTP time server configuration for Raspberry Pi
- Configures a Raspberry Pi as a network time server using chrony.
+Depends: ${misc:Depends}, chrony, gpsd, gpsd-clients, pps-tools, python3-gps
+Recommends: setserial
+Description: NTP time server with GPS/PPS support for Raspberry Pi
+ Configures a Raspberry Pi as a precision network time server using chrony
+ with support for GPS and PPS (Pulse Per Second) time sources.
  This package sets up chrony to serve time to local network clients
- while synchronizing with reliable upstream NTP sources.
+ while synchronizing with GPS/PPS hardware and upstream NTP sources.
+ Includes support for Raspberry Pi Ultimate GPS HAT.
